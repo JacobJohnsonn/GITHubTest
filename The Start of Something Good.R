@@ -1,4 +1,4 @@
-# Statistics for Business and Economics
+# The Start of Something Good
 options(scipen = 999)
 
 
