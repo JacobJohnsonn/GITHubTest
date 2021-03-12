@@ -5,18 +5,11 @@ options(scipen = 999)
 # ------------------------------------------------------------------- Libraries ---------------------------------------------------------------------------#
 ############################################################################################################################################################
 
-library(MASS, exclude = "select")
-library(magrittr)
 library(tidyverse)
 library(psych)
-library(Hmisc, exclude = c("describe", "summarize"))
-library(BDgraph, exclude = "select")
-library(ggpubr)
-library(ggcorrplot)
-library(EnvStats)
-library(gt)
 library(data.table)
 library(reshape)
+library(recommenderlab)
 
 ############################################################################################################################################################
 
@@ -26,12 +19,15 @@ library(reshape)
 # Code to pull file information in the working directory
 files <- file.info(dir()) %>% mutate(filename = rownames(.))
 
+
 # Read in the data
 movies <- read_csv(files %>% select(filename) %>% filter(grepl(x= filename, pattern = ".csv")) %>% slice(1) %>% pull())
 ratings <- read_csv(files %>% select(filename) %>% filter(grepl(x= filename, pattern = ".csv")) %>% slice(2) %>% pull())
 
+
 # Load in a couple of extra functions
 source(file = "Functions_JJ.R")
+
 
 
 # summarize the data
@@ -45,18 +41,23 @@ movie_genres <- movies %>%
   pull() %>% 
   str_split(string =., pattern = "\\|", n = Inf) %>% 
   unlist() %>%
-  unique()
+  unique() %>% 
+  sort(decreasing = F)
 
 
 movies[movie_genres] <- NA
 
 
-`%not_in%` <- purrr::negate(`%in%`)
+`%not_in%` <- negate(`%in%`)
+
+
 
 movies %>% summarize(CountOfSeparators = str_count(genres, pattern = "\\|")) %>% arrange(desc(CountOfSeparators)) %>% unique()
 data.frame(Names = names(movies)) %>% filter(Names %not_in% c("title", "movieId", "genres")) %>% arrange(Names)
 
-movies <- movies %>% 
+
+
+movies_cleaned <- movies %>% 
   mutate(NotListed = case_when(grepl(x = genres, pattern = "no genres listed", ignore.case = T) ~ 1, TRUE ~ 0)) %>% 
   mutate(Action = case_when(grepl(x = genres, pattern = "action", ignore.case = T) ~ 1, TRUE ~ 0)) %>% 
   mutate(Adventure = case_when(grepl(x = genres, pattern = "advent", ignore.case = T) ~ 1, TRUE ~ 0)) %>% 
@@ -76,13 +77,12 @@ movies <- movies %>%
   mutate(`Sci-Fi` = case_when(grepl(x = genres, pattern = "sci-", ignore.case = T) ~ 1, TRUE ~ 0)) %>% 
   mutate(Thriller = case_when(grepl(x = genres, pattern = "thrill", ignore.case = T) ~ 1, TRUE ~ 0)) %>%
   mutate(War = case_when(grepl(x = genres, pattern = "war", ignore.case = T) ~ 1, TRUE ~ 0)) %>% 
-  mutate(Western = case_when(grepl(x = genres, pattern = "Wester", ignore.case = T) ~ 1, TRUE ~ 0))
+  mutate(Western = case_when(grepl(x = genres, pattern = "Wester", ignore.case = T) ~ 1, TRUE ~ 0)) %>% 
+  select(-c("(no genres listed)", genres))
   
 
 
-
-movies %>%
-  select(-c("(no genres listed)")) %>% 
+movies_cleaned %>% 
   summarize(across(Adventure:NotListed, ~ sum(.x, na.rm = T))) %>% 
   t() %>% 
   data.frame(Count = .) %>%
@@ -91,22 +91,6 @@ movies %>%
   arrange(desc(Count))
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+movies_cleaned
 
 
